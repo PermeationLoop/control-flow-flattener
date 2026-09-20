@@ -1,2 +1,8 @@
 console.log("A"); 
-console.log("B");
+const a = 1 + "1";
+{
+	console.log("B");
+}
+if (true) {
+	console.log(a);
+}

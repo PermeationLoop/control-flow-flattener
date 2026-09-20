@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "m1": "tsx src/parse.ts"
+    "m1": "tsx src/parse.ts",
+    "m2": "tsx src/hoist-decls.ts"
   },
   "dependencies": {
     "@babel/generator": "^8.0.6",
