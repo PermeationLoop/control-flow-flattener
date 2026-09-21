@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "m1": "tsx src/parse.ts",
-    "m2": "tsx src/hoist-decls.ts"
+    "m2": "tsx src/hoist-decls.ts",
+    "m3": "tsx src/slice-states.ts"
   },
   "dependencies": {
     "@babel/generator": "^8.0.6",
