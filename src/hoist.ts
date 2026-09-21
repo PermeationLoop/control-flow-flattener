@@ -67,18 +67,15 @@ export function collectPatternNames(pattern: t.Node, out: string[]): void {
 }
 
 /**
- * Rename every binding that shadows a same-named binding in an enclosing
- * scope to a fresh unique name, rewriting all its references.
- * Runs BEFORE hoisting: after hoisting, all declarations live in one flat
- * function scope, so shadowing names would collide. Renaming first keeps
- * each binding's identity intact.
+ * Rename every binding inside fn that shadows a same-named binding in an
+ * enclosing scope, so hoisting can merge everything into one function-level
+ * `var` without collisions and without rebinding references. Function names
+ * are bindings too, so shadowed function declarations are handled here.
  *
- * The `Scope` visitor fires for every nested scope (blocks, loops, nested
- * functions) under `fn` — but NOT for `fn` itself, whose bindings are the
- * root and cannot be shadowed. References track their binding via Babel's
- * scope analysis, so `scope.rename` rewrites declaration + every reference
- * atomically. Names are collected before mutating because rename() edits
- * `scope.bindings` while we iterate.
+ * Babel's scope API does the resolution work: `hasBinding` walks the parent
+ * chain; `rename` rewrites the declaration and every reference that binds
+ * to it. References are collected first, so mutating `scope.bindings` during
+ * the rename loop is safe.
  */
 export function renameShadowedBindings(fn: NodePath<t.Function>): void {
   fn.traverse({
@@ -100,6 +97,12 @@ export function renameShadowedBindings(fn: NodePath<t.Function>): void {
  * declaration into a plain assignment (or a destructuring assignment for
  * pattern declarators — `({ a } = obj);` needs no temporaries).
  *
+ * Statement-position FunctionDeclarations are hoisted too, as intact nodes:
+ * JS already hoists them at runtime, so moving them is a no-op for
+ * function-body-level declarations — but the future state machine (M4) will
+ * trap them inside case-arm blocks (strict-mode block scoping) or skip them
+ * via branches, so they must sit at the very top before any if/loop.
+ *
  * Exclusions (deliberate):
  *  - nested function scopes (their locals stay local — handled separately)
  *  - for / for-in / for-of loop headers (the loop needs its own binding)
@@ -112,29 +115,30 @@ export function hoistFunctionDeclarations(fn: NodePath<t.Function>): void {
   renameShadowedBindings(fn);
 
   const names: string[] = [];
+  const fnDecls: t.FunctionDeclaration[] = [];
 
   fn.traverse({
-    // FunctionDeclaration(path) {
-    //   // NO NEED to convert because JS has function dclr hoisting and will be handled by scope rename
-    //   // convert function xxxx () {} into let xxx = function () {} for hoisting
-    //   const oldfunc = path.node;
-    //   const id = oldfunc.id;  // I think the id should be defined here so no further check is performed
-    //   if (!id) throw TypeError("Error in transforming function declaration");
-    //   // create function expression
-    //   const functionExpr = t.functionExpression (
-    //     undefined, oldfunc.params, oldfunc.body, oldfunc.generator, oldfunc.async
-    //   );
-    //   const varDeclaration = t.variableDeclaration (
-    //     "let", [t.variableDeclarator(
-    //       id, functionExpr
-    //     )]
-    //   );
-    //   path.replaceWith(varDeclaration);
-    //   // and this path should be visited again and processed by the
-    //   // variable declaration visitor.
-    // },
     Function(path) {
       path.skip(); // this function's own locals are hoisted by its own pass
+    },
+    FunctionDeclaration(path) {
+      const parent = path.parentPath;
+      fnDecls.push(path.node);
+      if (
+        parent.isIfStatement() ||
+        parent.isWhileStatement() ||
+        parent.isDoWhileStatement() ||
+        parent.isForStatement() ||
+        parent.isForInStatement() ||
+        parent.isForOfStatement() ||
+        parent.isLabeledStatement()
+      ) {
+        // Single-statement position (e.g. `if (x) function g(){}`): the
+        // parent needs SOME statement — leave an empty one behind.
+        path.replaceWith(t.emptyStatement());
+      } else {
+        path.remove();
+      }
     },
     VariableDeclaration(path) {
       const parent = path.parentPath;
@@ -180,10 +184,27 @@ export function hoistFunctionDeclarations(fn: NodePath<t.Function>): void {
     unique.push(name);
   }
 
-  if (unique.length === 0) return;
-  const hoisted = t.variableDeclaration(
-    "var",
-    unique.map((n) => t.variableDeclarator(t.identifier(n)))
-  );
-  fn.node.body.body.unshift(hoisted);
+  if (fnDecls.length > 0) fn.node.body.body.unshift(...fnDecls);
+  if (unique.length > 0) {
+    const hoisted = t.variableDeclaration(
+      "var",
+      unique.map((n) => t.variableDeclarator(t.identifier(n)))
+    );
+    fn.node.body.body.unshift(hoisted);
+  }
+}
+
+/**
+ * Run `program` (which must declare `function order(...)`), stubbing
+ * console.log, and return the captured output + return value as a string,
+ * for comparing original vs transformed behavior.
+ */
+export function runCaptured(program: string, args: unknown[] = []): string {
+  const lines: string[] = [];
+  const consoleStub = {
+    log: (...a: unknown[]) => lines.push(a.join(" ")),
+  };
+  const order = new Function("console", `${program}\nreturn order;`)(consoleStub);
+  const result = order(...args);
+  return `${JSON.stringify(result)} ${lines.join(" | ")}`;
 }

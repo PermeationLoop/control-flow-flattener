@@ -2,7 +2,7 @@ import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
 import { readFile, writeFile } from "fs/promises";
-import { hoistFunctionDeclarations } from "./hoist.js";
+import { hoistFunctionDeclarations, runCaptured } from "./hoist.js";
 
 const SAMPLE = `function order() {
   console.log("start");
@@ -11,24 +11,18 @@ const SAMPLE = `function order() {
   var tag = "T";
   const { a, b: renamed } = { a: 10, b: 20 };
   let [head, ...rest] = [1, 2, 3];
+  function inline() { return tag + total; }
   {
     let step = 5;
     total = total + step * factor;
+    function blocked() { return "blocked"; }
+    console.log("blocked says", blocked());
   }
-  total = total + renamed + head + rest.length;
+  total = total + renamed + head + rest.length + inline().length;
   console.log("done", tag + total);
   return tag + total;
 }
 `;
-
-function runCaptured(program: string): string {
-  const lines: string[] = [];
-  const consoleStub = {
-    log: (...args: unknown[]) => lines.push(args.join(" ")),
-  };
-  new Function("console", `${program}\nreturn order();`)(consoleStub);
-  return lines.join("\n");
-}
 
 // No file arg -> run the embedded sample and prove output equality.
 // With file arg -> hoist every function in that file, write transformed.js.
