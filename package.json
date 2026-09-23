@@ -8,7 +8,8 @@
     "m1": "tsx src/steps/parse.ts",
     "m2": "tsx src/steps/hoist-decls.ts",
     "m3": "tsx src/steps/slice-states.ts",
-    "m4": "tsx src/steps/flatten.ts"
+    "m4": "tsx src/steps/flatten.ts",
+    "start": "tsx src/cff.ts"
   },
   "dependencies": {
     "@babel/generator": "^8.0.6",
