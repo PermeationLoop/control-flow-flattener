@@ -16,7 +16,8 @@
 
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
-import { flattenProgram, transpileTs } from "../lib/flatten.js";
+import { flattenProgram } from "../lib/flatten.js";
+import { transpileTs } from "../lib/transpile-ts.js";
 import { runCaptured } from "../lib/hoist.js";
 
 const TEST_DIR = new URL(".", import.meta.url).pathname;

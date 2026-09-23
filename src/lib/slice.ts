@@ -15,20 +15,20 @@ export type FNode =
 export type Slice =
   | { kind: "seq"; id: number; stmts: t.Statement[]; next: number }
   | {
-      kind: "if";
-      id: number;
-      test: t.Expression;
-      nextTrue: number;
-      nextFalse: number;
-      merge: number;
-    }
+    kind: "if";
+    id: number;
+    test: t.Expression;
+    nextTrue: number;
+    nextFalse: number;
+    merge: number;
+  }
   | {
-      kind: "while";
-      id: number;
-      test: t.Expression;
-      nextBody: number;
-      merge: number;
-    }
+    kind: "while";
+    id: number;
+    test: t.Expression;
+    nextBody: number;
+    merge: number;
+  }
   | { kind: "break"; id: number; next: number }
   | { kind: "continue"; id: number; next: number };
 
@@ -114,14 +114,14 @@ function buildNodes(stmts: t.Statement[], parent: FNode | null): FNode[] {
 // reads naturally top to bottom. Module-scoped (reset per buildSlices call).
 export const idOf = new Map<FNode, number>();
 
-function assignIds(nodes: FNode[], counter: { value: number }): void {
+function assignIds(nodes: FNode[], getNext: () => number): void {
   for (const node of nodes) {
-    idOf.set(node, counter.value++);
+    idOf.set(node, getNext());
     if (node.kind === "if") {
-      assignIds(node.con, counter);
-      if (node.alt) assignIds(node.alt, counter);
+      assignIds(node.con, getNext);
+      if (node.alt) assignIds(node.alt, getNext);
     } else if (node.kind === "while") {
-      assignIds(node.body, counter);
+      assignIds(node.body, getNext);
     }
   }
 }
@@ -201,17 +201,53 @@ function wire(nodes: FNode[], exit: number): void {
 export function buildSlices(fn: NodePath<t.Function>): {
   top: FNode[];
   slices: Slice[];
+  entry: number
   exit: number;
 } {
+  const randomized = true;
   if (!t.isBlockStatement(fn.node.body)) {
     throw new TypeError("buildSlices expects a function with a block body");
   }
   idOf.clear();
   slices.length = 0;
   const top = buildNodes(fn.node.body.body, null);
-  const counter = { value: 0 };
-  assignIds(top, counter);
-  const exit = counter.value;
+  const { getNext, getFirstAssigned } = IdGenerator(randomized);
+  assignIds(top, getNext);
+  const exit = getNext();
+  const entry = getFirstAssigned();
   wire(top, exit);
-  return { top, slices: [...slices], exit };
+  const slicesResult = [...slices];
+  if(randomized) slicesResult.sort(() => Math.random() - 0.5);
+  return { top, slices: slicesResult, entry, exit };
+}
+
+function IdGenerator(randomized = true) {
+  const idAssigned: number[] = [-1];
+  const getRandomIntInclusive = (min: number, max: number) => {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+  const getNext: () => number = () => {
+    let choice: number;
+
+    if (randomized) {
+      do {
+        choice = getRandomIntInclusive(0, 999999);
+      } while (idAssigned.includes(choice))
+    } else {
+      choice = idAssigned[idAssigned.length - 1] + 1;
+    }
+    idAssigned.push(choice);
+    return choice;
+  }
+  const getLast = () => {
+    // not used maybe. Because EXIT needs a new id too.
+    return idAssigned[idAssigned.length - 1];
+  }
+  const getFirstAssigned = () => {
+    if (idAssigned.length === 1) throw TypeError("Didn't assign anything!");
+    return idAssigned[1];
+  }
+  return { getNext, getFirstAssigned }
 }

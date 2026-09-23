@@ -49,8 +49,8 @@ if (!fnPath) throw new Error("target function 'order' not found");
 
 hoistFunctionDeclarations(fnPath); // M2: hoisted code is what gets sliced
 
-const { slices, exit } = buildSlices(fnPath);
-fnPath.node.body.body = buildMachine(slices, exit);
+const { slices, entry, exit } = buildSlices(fnPath);
+fnPath.node.body.body = buildMachine(slices, entry, exit);
 const flattened = generate(ast).code;
 
 if (inputFile) {

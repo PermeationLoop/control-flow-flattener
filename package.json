@@ -10,7 +10,8 @@
     "m3": "tsx src/steps/slice-states.ts",
     "m4": "tsx src/steps/flatten.ts",
     "start": "tsx src/cff.ts",
-    "test": "tsx src/test/run.ts"
+    "test": "tsx src/test/run.ts",
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "@babel/core": "^8.0.6",

@@ -112,14 +112,14 @@ if (!fnPath) throw new Error("target function 'order' not found");
 
 hoistFunctionDeclarations(fnPath); // M2 first: hoisted code is what gets sliced
 
-const { top, slices, exit: EXIT_STATE } = buildSlices(fnPath);
+const { top, slices, entry, exit: EXIT_STATE } = buildSlices(fnPath);
 for (const s of slices) byId.set(s.id, s);
 
 const annotatedStmts = annotate(top);
 fnPath.node.body.body = annotatedStmts;
 const annotated = generate(ast).code;
 
-console.log(`--- State table (${slices.length} slices, EXIT=${EXIT_STATE}) ---`);
+console.log(`--- State table (${slices.length} slices, entry=${entry} EXIT=${EXIT_STATE}) ---`);
 printTable(slices);
 
 if (inputFile) {

@@ -56,10 +56,10 @@ function buildCase(s: Slice, stateName: string): t.SwitchCase {
 // Replace the function body with the state machine. The hoisted `var`s are
 // already inside slice 0 (state 0 executes them), so the body is only the
 // state declaration plus the loop.
-export function buildMachine(slices: Slice[], exit: number): t.Statement[] {
+export function buildMachine(slices: Slice[], entryId: number, exit: number): t.Statement[] {
 	const stateName = "__state";
 	const entry = t.variableDeclaration("let", [
-		t.variableDeclarator(t.identifier(stateName), t.numericLiteral(0)),
+		t.variableDeclarator(t.identifier(stateName), t.numericLiteral(entryId)),
 	]);
 	const sw = t.switchStatement(
 		t.identifier(stateName),

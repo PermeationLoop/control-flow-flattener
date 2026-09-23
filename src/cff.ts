@@ -7,7 +7,8 @@
 import { readFile, writeFile } from "fs/promises";
 import { exit } from "process";
 import { parse as pathParse, extname } from "path";
-import { flattenProgram, isTypeScript } from "./lib/flatten.js";
+import { flattenProgram } from "./lib/flatten.js";
+import { isTypeScript } from "./lib/transpile-ts.js";
 
 if (process.argv.length !== 3) {
 	console.error("Usage: tsx cff.ts input.js|input.ts");

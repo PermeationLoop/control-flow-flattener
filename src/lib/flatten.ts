@@ -64,8 +64,8 @@ export function flattenProgram(
     },
   });
   for (const fnPath of toFlatten) {
-    const { slices, exit } = buildSlices(fnPath);
-    fnPath.node.body.body = buildMachine(slices, exit);
+    const { slices, entry, exit } = buildSlices(fnPath);
+    fnPath.node.body.body = buildMachine(slices, entry, exit);
   }
 
   log(`[+] Function processed count: ${toFlatten.length}, generating code...`);
