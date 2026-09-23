@@ -7,9 +7,9 @@ import generate from "@babel/generator";
 import * as t from "@babel/types";
 import type { NodePath } from "@babel/traverse";
 import { readFile, writeFile } from "fs/promises";
-import { hoistFunctionDeclarations, runCaptured } from "./hoist.js";
-import { buildSlices } from "./slice.js";
-import type { Slice } from "./slice.js";
+import { hoistFunctionDeclarations, runCaptured } from "../lib/hoist.js";
+import { buildSlices } from "../lib/slice.js";
+import type { Slice } from "../lib/slice.js";
 
 const SAMPLE = `function order(limit = 5) {
   console.log("start");

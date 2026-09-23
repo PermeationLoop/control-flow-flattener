@@ -1,8 +1,11 @@
+// this code test hoisting the declaration of a function called "order"
+// and test if the execution result matches the origin one
+
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
 import { readFile, writeFile } from "fs/promises";
-import { hoistFunctionDeclarations, runCaptured } from "./hoist.js";
+import { hoistFunctionDeclarations, runCaptured } from "../lib/hoist.js";
 
 const SAMPLE = `function order() {
   console.log("start");

@@ -1,8 +1,10 @@
+// This file test code -> ast -> code conversion
+
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
 import { readFile, writeFile } from 'fs/promises';
-import cleanAst from "./clean-ast.js";
+import cleanAst from "../lib/clean-ast.js";
 
 const args: string[] = process.argv.slice(2);
 const astOutput = "./ast.json";

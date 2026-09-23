@@ -5,5 +5,5 @@ __pycache__/
 *.pyc
 *.pyo
 
-ast.json
-*.js
+ast*.json
+/*.js

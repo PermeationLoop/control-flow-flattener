@@ -1,12 +1,15 @@
+// This step tests slicing a function and add state annotation to each state
+// and compare their execution results
+
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import generate from "@babel/generator";
 import * as t from "@babel/types";
 import type { NodePath } from "@babel/traverse";
 import { readFile } from "fs/promises";
-import { hoistFunctionDeclarations, runCaptured } from "./hoist.js";
-import { buildSlices, idOf } from "./slice.js";
-import type { FNode, Slice } from "./slice.js";
+import { hoistFunctionDeclarations, runCaptured } from "../lib/hoist.js";
+import { buildSlices, idOf } from "../lib/slice.js";
+import type { FNode, Slice } from "../lib/slice.js";
 
 const SAMPLE = `function order(flag) {
   console.log("start");
