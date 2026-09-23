@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.5.1",
   "scripts": {
     "m1": "tsx src/steps/parse.ts",
     "m2": "tsx src/steps/hoist-decls.ts",
