@@ -5,13 +5,17 @@ import traverse from "@babel/traverse";
 import generate from "@babel/generator";
 import { readFile, writeFile } from 'fs/promises';
 import cleanAst from "../lib/clean-ast.js";
+import { isTypeScript, transpileTs } from "../lib/transpile-ts.js";
+
 
 const args: string[] = process.argv.slice(2);
 const astOutput = "./ast.json";
 
-const code = await readFile(args[0], {
+const source = await readFile(args[0], {
   encoding: "utf-8"
 });
+
+const code = isTypeScript(args[0]) ? transpileTs(source) : source;
 
 // 1. PARSE: source string -> File AST
 const ast = parse(code);

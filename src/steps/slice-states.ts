@@ -10,6 +10,7 @@ import { readFile } from "fs/promises";
 import { hoistFunctionDeclarations, runCaptured } from "../lib/hoist.js";
 import { buildSlices, idOf } from "../lib/slice.js";
 import type { FNode, Slice } from "../lib/slice.js";
+import { isTypeScript, transpileTs } from "../lib/transpile-ts.js";
 
 const SAMPLE = `function order(flag) {
   console.log("start");
@@ -95,7 +96,9 @@ function printTable(slices: Slice[]): void {
 
 // --- Main -----------------------------------------------------------------
 const inputFile = process.argv[2];
-const code = inputFile ? await readFile(inputFile, "utf-8") : SAMPLE;
+const source = inputFile ? await readFile(inputFile, "utf-8") : SAMPLE;
+
+const code = isTypeScript(inputFile) ? transpileTs(source) : source;
 
 const ast = parse(code);
 
