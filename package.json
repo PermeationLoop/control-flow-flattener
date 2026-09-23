@@ -9,11 +9,14 @@
     "m2": "tsx src/steps/hoist-decls.ts",
     "m3": "tsx src/steps/slice-states.ts",
     "m4": "tsx src/steps/flatten.ts",
-    "start": "tsx src/cff.ts"
+    "start": "tsx src/cff.ts",
+    "test": "tsx src/test/run.ts"
   },
   "dependencies": {
+    "@babel/core": "^8.0.6",
     "@babel/generator": "^8.0.6",
     "@babel/parser": "^8.0.6",
+    "@babel/preset-typescript": "^8.0.1",
     "@babel/traverse": "^8.0.6",
     "@babel/types": "^8.0.6"
   },
