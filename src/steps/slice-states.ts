@@ -8,7 +8,7 @@ import * as t from "@babel/types";
 import type { NodePath } from "@babel/traverse";
 import { readFile } from "fs/promises";
 import { hoistFunctionDeclarations, runCaptured } from "../lib/hoist.js";
-import { buildSlices, idOf } from "../lib/slice.js";
+import { buildSlices, getIdOfNode } from "../lib/slice.js";
 import type { FNode, Slice } from "../lib/slice.js";
 import { isTypeScript, transpileTs } from "../lib/transpile-ts.js";
 
@@ -52,7 +52,7 @@ function annotate(nodes: FNode[]): t.Statement[] {
   const emit = (list: FNode[]): void => {
     for (const n of list) {
       if (n.kind === "stmts") {
-        const slice = byId.get(idOf.get(n)!) as Extract<Slice, { kind: "seq" }>;
+        const slice = byId.get(getIdOfNode.get(n)!) as Extract<Slice, { kind: "seq" }>;
         out = out.concat(n.stmts);
         out.push(stateAssign(slice.next));
       } else if (n.kind === "if") {
@@ -60,10 +60,10 @@ function annotate(nodes: FNode[]): t.Statement[] {
       } else if (n.kind === "while") {
         out.push(n.stmt);
       } else if (n.kind === "break") {
-        const slice = byId.get(idOf.get(n)!) as Extract<Slice, { kind: "break" }>;
+        const slice = byId.get(getIdOfNode.get(n)!) as Extract<Slice, { kind: "break" }>;
         out.push(n.stmt, stateAssign(slice.next));
       } else if (n.kind === "continue") {
-        const slice = byId.get(idOf.get(n)!) as Extract<Slice, { kind: "continue" }>;
+        const slice = byId.get(getIdOfNode.get(n)!) as Extract<Slice, { kind: "continue" }>;
         out.push(n.stmt, stateAssign(slice.next));
       }
     }

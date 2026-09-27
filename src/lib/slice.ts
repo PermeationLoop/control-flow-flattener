@@ -112,11 +112,11 @@ function buildNodes(stmts: t.Statement[], parent: FNode | null): FNode[] {
 // Depth-first allocation (test state, then consequent, then alternate, then
 // the following sibling) numbers states in execution order, so the mapping
 // reads naturally top to bottom. Module-scoped (reset per buildSlices call).
-export const idOf = new Map<FNode, number>();
+export const getIdOfNode = new Map<FNode, number>();
 
 function assignIds(nodes: FNode[], getNext: () => number): void {
   for (const node of nodes) {
-    idOf.set(node, getNext());
+    getIdOfNode.set(node, getNext());
     if (node.kind === "if") {
       assignIds(node.con, getNext);
       if (node.alt) assignIds(node.alt, getNext);
@@ -136,16 +136,16 @@ export const slices: Slice[] = [];
 function wire(nodes: FNode[], exit: number): void {
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
-    const next = i + 1 < nodes.length ? idOf.get(nodes[i + 1])! : exit;
+    const next = i + 1 < nodes.length ? getIdOfNode.get(nodes[i + 1])! : exit;
     if (node.kind === "stmts") {
-      slices.push({ kind: "seq", id: idOf.get(node)!, stmts: node.stmts, next });
+      slices.push({ kind: "seq", id: getIdOfNode.get(node)!, stmts: node.stmts, next });
     } else if (node.kind === "if") {
       slices.push({
         kind: "if",
-        id: idOf.get(node)!,
+        id: getIdOfNode.get(node)!,
         test: node.test,
-        nextTrue: node.con.length > 0 ? idOf.get(node.con[0])! : next,
-        nextFalse: node.alt && node.alt.length > 0 ? idOf.get(node.alt[0])! : next,
+        nextTrue: node.con.length > 0 ? getIdOfNode.get(node.con[0])! : next,
+        nextFalse: node.alt && node.alt.length > 0 ? getIdOfNode.get(node.alt[0])! : next,
         merge: next,
       });
       wire(node.con, next);
@@ -153,12 +153,12 @@ function wire(nodes: FNode[], exit: number): void {
     } else if (node.kind === "while") {
       slices.push({
         kind: "while",
-        id: idOf.get(node)!,
+        id: getIdOfNode.get(node)!,
         test: node.test,
-        nextBody: node.body.length > 0 ? idOf.get(node.body[0])! : idOf.get(node)!,
+        nextBody: node.body.length > 0 ? getIdOfNode.get(node.body[0])! : getIdOfNode.get(node)!,
         merge: next,
       });
-      wire(node.body, idOf.get(node)!);
+      wire(node.body, getIdOfNode.get(node)!);
     } else if (node.kind === "break") {
       // find the merge of the parent while
       let parent: FNode | null = node.parent;
@@ -168,14 +168,14 @@ function wire(nodes: FNode[], exit: number): void {
       if (parent === null) throw new TypeError("break outside while");
       // parent must be while here; find its pushed slice (wire pushes the
       // while slice before descending into the body, so it always exists)
-      const parentId = idOf.get(parent)!;
+      const parentId = getIdOfNode.get(parent)!;
       const parentSlice = slices.find(
         (slice) => slice.id === parentId
       ) as Extract<Slice, { kind: "while" }>;
       if (!parentSlice || parentSlice.kind !== "while") {
         throw new TypeError("break parent is not a while slice");
       }
-      slices.push({ kind: "break", id: idOf.get(node)!, next: parentSlice.merge });
+      slices.push({ kind: "break", id: getIdOfNode.get(node)!, next: parentSlice.merge });
     } else if (node.kind === "continue") {
       // find the beginning (test state) of the parent while
       let parent: FNode | null = node.parent;
@@ -183,7 +183,7 @@ function wire(nodes: FNode[], exit: number): void {
         parent = parent.parent;
       }
       if (parent === null) throw new TypeError("continue outside while");
-      slices.push({ kind: "continue", id: idOf.get(node)!, next: idOf.get(parent)! });
+      slices.push({ kind: "continue", id: getIdOfNode.get(node)!, next: getIdOfNode.get(parent)! });
     } else {
       // unreachable: FNode is an exhaustive union
       const impossible: never = node;
@@ -208,7 +208,7 @@ export function buildSlices(fn: NodePath<t.Function>): {
   if (!t.isBlockStatement(fn.node.body)) {
     throw new TypeError("buildSlices expects a function with a block body");
   }
-  idOf.clear();
+  getIdOfNode.clear();
   slices.length = 0;
   const top = buildNodes(fn.node.body.body, null);
   const { getNext, getFirstAssigned } = IdGenerator(randomized);
