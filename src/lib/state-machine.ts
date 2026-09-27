@@ -8,10 +8,28 @@ import type { NodePath } from "@babel/traverse";
 import type { Slice } from "./slice.js";
 
 
-function stateAssign(n: number, stateName: string): t.ExpressionStatement {
-	return t.expressionStatement(
+function stateAssign(n: number, stateName: string): t.ExpressionStatement | t.BlockStatement {
+	const debug = false;
+	const assign = t.expressionStatement(
 		t.assignmentExpression("=", t.identifier(stateName), t.numericLiteral(n))
 	);
+	let result: t.ExpressionStatement | t.BlockStatement;
+
+	if (debug) {
+		result = t.blockStatement([
+			assign,
+			t.expressionStatement(
+				t.callExpression(t.memberExpression(
+					t.identifier("console"), t.identifier("log")
+				), [t.numericLiteral(n)])
+			)
+		])
+
+	} else {
+		result = assign
+	}
+
+	return result;
 }
 
 // One SwitchCase per slice. The jump semantics:

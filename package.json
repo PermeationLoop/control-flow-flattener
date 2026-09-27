@@ -9,6 +9,7 @@
     "m2": "tsx src/steps/hoist-decls.ts",
     "m3": "tsx src/steps/slice-states.ts",
     "m4": "tsx src/steps/flatten.ts",
+    "for2while": "tsx src/steps/for2while-test.ts",
     "start": "tsx src/cff.ts",
     "test": "tsx src/test/run.ts",
     "check": "tsc --noEmit"
