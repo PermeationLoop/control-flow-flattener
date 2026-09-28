@@ -60,10 +60,18 @@ function buildCase(s: Slice, stateName: string): t.SwitchCase {
 		];
 	} else if (s.kind === "break") {
 		consequent = [stateAssign(s.next, stateName), t.breakStatement()];
+	} else if (s.kind === "for") {
+		consequent = [
+			t.ifStatement(
+				t.cloneNode(s.test ? s.test : t.booleanLiteral(true), true),
+				stateAssign(s.nextBody, stateName),
+				stateAssign(s.merge, stateName),
+			),
+		];
 	} else {
 		consequent = [stateAssign(s.next, stateName), t.continueStatement()];
 	}
-	if (s.kind === "seq" || s.kind === "if" || s.kind === "while") {
+	if (s.kind === "seq" || s.kind === "if" || s.kind === "while" || s.kind === "for") {
 		// exit the switch so the while loop re-reads __state — without this,
 		// cases fall through and re-run the whole switch every pass
 		consequent = [...consequent, t.breakStatement()];

@@ -12,7 +12,7 @@ import type { NodePath } from "@babel/traverse";
 import { hoistFunctionDeclarations } from "./hoist.js";
 import { buildSlices } from "./slice.js";
 import { buildMachine } from "./state-machine.js";
-
+import { wrapForInBlock } from "./wrap-for-in-block.js";
 
 
 export interface FlattenResult {
@@ -33,12 +33,18 @@ export interface FlattenResult {
 export function flattenProgram(
   code: string,
   filename: string,
-  log: (msg: string) => void = () => {}
+  log: (msg: string) => void = () => { }
 ): FlattenResult {
   const source = isTypeScript(filename) ? transpileTs(code) : code;
 
   const ast = parse(source, { sourceType: "module" });
-  log("[+] AST parsed");
+  log("[+] AST parsed, wrapping for loops");
+
+  traverse(ast, {
+    ForStatement(path) {
+      wrapForInBlock(path);
+    },
+  });
 
   const fnPathes: NodePath<t.FunctionDeclaration>[] = [];
   traverse(ast, {

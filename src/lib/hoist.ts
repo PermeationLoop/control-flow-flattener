@@ -82,7 +82,8 @@ export function renameShadowedBindings(fn: NodePath<t.Function>): void {
     Scope(path) {
       const scope = path.scope;
       const shadowed = Object.keys(scope.bindings).filter((name) =>
-        scope.parent?.hasBinding(name)
+        //scope.parent?.hasBinding(name)
+        true
       );
       for (const name of shadowed) {
         scope.rename(name, scope.generateUid(name));

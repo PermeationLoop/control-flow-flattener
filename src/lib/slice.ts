@@ -10,7 +10,8 @@ export type FNode =
   | { kind: "if"; stmt: t.IfStatement; test: t.Expression; con: FNode[]; alt: FNode[] | null; parent: FNode | null }
   | { kind: "while"; stmt: t.WhileStatement; test: t.Expression; body: FNode[]; parent: FNode | null }
   | { kind: "break"; stmt: t.BreakStatement; parent: FNode | null }
-  | { kind: "continue"; stmt: t.ContinueStatement; parent: FNode | null };
+  | { kind: "continue"; stmt: t.ContinueStatement; parent: FNode | null }
+  | { kind: "for"; stmt: t.ForStatement; test: t.Expression | null | undefined; update: t.Expression | null | undefined; body: FNode[]; updateBody: FNode[] | null; parent: FNode | null }
 
 export type Slice =
   | { kind: "seq"; id: number; stmts: t.Statement[]; next: number }
@@ -27,6 +28,15 @@ export type Slice =
     id: number;
     test: t.Expression;
     nextBody: number;
+    merge: number;
+  }
+  | {
+    kind: "for";
+    id: number;
+    test: t.Expression | null | undefined;
+    update: t.Expression | null | undefined;
+    nextBody: number;
+    updateBody: number | null;
     merge: number;
   }
   | { kind: "break"; id: number; next: number }
@@ -48,6 +58,7 @@ function shouldAvoidGrouping(stmt: t.Statement): boolean {
   if (t.isContinueStatement(stmt)) return true;
   if (t.isBlockStatement(stmt)) return true;
   if (t.isLabeledStatement(stmt)) return true;
+  if (t.isForStatement(stmt)) return true;
   return false;
 }
 
@@ -76,6 +87,21 @@ function buildNodes(stmts: t.Statement[], parent: FNode | null): FNode[] {
       ifNode.con = buildNodes(toList(stmt.consequent), ifNode);
       ifNode.alt = stmt.alternate ? buildNodes(toList(stmt.alternate), ifNode) : null;
       nodes.push(ifNode);
+    } else if (t.isForStatement(stmt)) {
+      const forNode: FNode = {
+        kind: "for",
+        stmt,
+        test: stmt.test,
+        update: stmt.update,
+        body: null as unknown as FNode[],
+        updateBody: null as unknown as FNode[],
+        parent
+      }
+      forNode.body = buildNodes(toList(stmt.body), forNode);
+      if (forNode.update) {
+        forNode.updateBody = buildNodes(toList(t.expressionStatement(forNode.update)), forNode)
+      }
+      nodes.push(forNode);
     } else if (t.isWhileStatement(stmt)) {
       const whileNode: FNode = {
         kind: "while",
@@ -122,6 +148,9 @@ function assignIds(nodes: FNode[], getNext: () => number): void {
       if (node.alt) assignIds(node.alt, getNext);
     } else if (node.kind === "while") {
       assignIds(node.body, getNext);
+    } else if (node.kind === "for") {
+      assignIds(node.body, getNext);
+      if (node.updateBody) assignIds(node.updateBody, getNext);
     }
   }
 }
@@ -159,31 +188,47 @@ function wire(nodes: FNode[], exit: number): void {
         merge: next,
       });
       wire(node.body, getIdOfNode.get(node)!);
+    } else if (node.kind === "for") {
+      slices.push({
+        kind: "for",
+        id: getIdOfNode.get(node)!,
+        test: node.test,
+        update: node.update,
+        nextBody: node.body.length > 0 ? getIdOfNode.get(node.body[0])! : getIdOfNode.get(node.updateBody ? node.updateBody[0] : node)!,
+        updateBody: node.updateBody && node.updateBody.length > 0 ? getIdOfNode.get(node.updateBody[0])! : getIdOfNode.get(node)!,
+        merge: next,
+      });
+      wire(node.body, getIdOfNode.get(node.updateBody ? node.updateBody[0] : node)!);
+      if (node.updateBody) wire(node.updateBody, getIdOfNode.get(node)!);
     } else if (node.kind === "break") {
       // find the merge of the parent while
       let parent: FNode | null = node.parent;
-      while (parent !== null && parent.kind !== "while") {
+      while (parent !== null && parent.kind !== "while" && parent.kind !== "for") {
         parent = parent.parent;
       }
-      if (parent === null) throw new TypeError("break outside while");
+      if (parent === null) throw new TypeError("break outside loop");
       // parent must be while here; find its pushed slice (wire pushes the
       // while slice before descending into the body, so it always exists)
       const parentId = getIdOfNode.get(parent)!;
       const parentSlice = slices.find(
         (slice) => slice.id === parentId
-      ) as Extract<Slice, { kind: "while" }>;
-      if (!parentSlice || parentSlice.kind !== "while") {
+      ) as Extract<Slice, { kind: "while" }> | Extract<Slice, { kind: "for" }>;
+      if (!parentSlice) {
         throw new TypeError("break parent is not a while slice");
       }
       slices.push({ kind: "break", id: getIdOfNode.get(node)!, next: parentSlice.merge });
     } else if (node.kind === "continue") {
       // find the beginning (test state) of the parent while
       let parent: FNode | null = node.parent;
-      while (parent !== null && parent.kind !== "while") {
+      while (parent !== null && parent.kind !== "while" && parent.kind !== "for") {
         parent = parent.parent;
       }
-      if (parent === null) throw new TypeError("continue outside while");
-      slices.push({ kind: "continue", id: getIdOfNode.get(node)!, next: getIdOfNode.get(parent)! });
+      if (parent === null) throw new TypeError("continue outside loop");
+      if (parent.kind === "for" && parent.updateBody) {
+        slices.push({ kind: "continue", id: getIdOfNode.get(node)!, next: getIdOfNode.get(parent.updateBody[0])! });
+      } else {
+        slices.push({ kind: "continue", id: getIdOfNode.get(node)!, next: getIdOfNode.get(parent)! });
+      }
     } else {
       // unreachable: FNode is an exhaustive union
       const impossible: never = node;
@@ -217,7 +262,7 @@ export function buildSlices(fn: NodePath<t.Function>): {
   const entry = getFirstAssigned();
   wire(top, exit);
   const slicesResult = [...slices];
-  if(randomized) slicesResult.sort(() => Math.random() - 0.5);
+  if (randomized) slicesResult.sort(() => Math.random() - 0.5);
   return { top, slices: slicesResult, entry, exit };
 }
 
